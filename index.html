@@ -3,770 +3,631 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kemahiran Pemulihan: Operasi Tambah (Mengumpul Semula)</title>
+  <title>Matematik Ceria: Kumpul Semula</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
   <style>
-    body { box-sizing: border-box; }
-    .activity-card { min-height: 400px; }
-    .number-card { transition: all .3s ease; cursor: pointer; }
-    .number-card:hover { transform: scale(1.05); }
-    .dragging { opacity: .5; transform: rotate(5deg); }
-
-    /* Drop zone */
-    .drop-zone {
-      border: 2px dashed #cbd5e1;
-      transition: all .3s ease;
-      min-width: 60px;
-      min-height: 60px;
-      display: inline-block;
-      vertical-align: middle;
-    }
-    .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; }
-
-    /* Salah */
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      50% { transform: translateX(5px); }
-      75% { transform: translateX(-5px); }
-      100% { transform: translateX(0); }
-    }
-    .shake { animation: shake 0.5s ease; }
-
-    /* Zon sudah diisi */
-    .drop-zone-filled {
-      border-style: solid;
-      border-color: #4ade80;
-      background-color: #f0fdf4;
+    /* --- UI STYLE (TEMA HIJAU KONSISTEN) --- */
+    body { 
+        font-family: 'Fredoka', sans-serif; 
+        background-color: #f0fdf4; 
+        background-image: radial-gradient(#86efac 2px, transparent 2px); 
+        background-size: 30px 30px; 
     }
     
-    /* === STYLES BARU UNTUK AKTIVITI TAMBAH === */
+    /* Card Container */
+    .game-card { 
+        background: white; 
+        border: 4px solid #475569; 
+        box-shadow: 8px 8px 0px #00000020; 
+        border-radius: 1.5rem; 
+        min-height: 600px; 
+        position: relative;
+    }
+    
+    /* Buttons 3D */
+    .btn-3d { 
+        transition: all 0.1s; 
+        border-bottom-width: 6px; 
+        border-color: rgba(0,0,0,0.2); 
+        transform: translateY(0); 
+        cursor: pointer; 
+        display: inline-block; 
+    }
+    .btn-3d:active:not(:disabled) { 
+        transform: translateY(4px); 
+        border-bottom-width: 2px; 
+        box-shadow: none; 
+    }
+    .btn-3d:disabled { opacity: 0.6; cursor: not-allowed; border-bottom-width: 6px; filter: grayscale(100%); }
 
-    /* Aktiviti 1: Blok Asas 10 */
-    .base-10-container { display: flex; justify-content: space-around; gap: 1rem; }
-    .base-10-mat { background-color: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; padding: 1rem; width: 30%; min-height: 200px; }
-    .base-10-combine-mat { width: 100%; }
+    /* Animation & Feedback */
+    .shake { animation: shake 0.4s ease-in-out; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    
+    /* --- STYLE KHUSUS AKTIVITI --- */
+    
+    /* Blok Asas 10 */
+    .base-10-container { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    .base-10-mat { background-color: #f8fafc; border: 3px solid #cbd5e1; border-radius: 1rem; padding: 1rem; min-width: 200px; text-align: left; }
+    .base-10-combine-mat { width: 100%; border-color: #4ade80; background-color: #f0fdf4; }
     .base-10-col { 
       border: 2px dashed #9ca3af; padding: 0.5rem; min-height: 150px; 
-      border-radius: 4px; transition: all 0.3s ease; 
+      border-radius: 0.5rem; transition: all 0.3s ease; background: white;
     }
-    .block-100 { width: 50px; height: 50px; background: #f87171; border: 2px solid #b91c1c; margin: 2px; display: inline-block; }
-    .block-10 { width: 5px; height: 50px; background: #3b82f6; border: 2px solid #1d4ed8; margin: 2px; display: inline-block; }
-    .block-1 { width: 5px; height: 5px; background: #facc15; border: 2px solid #a16207; margin: 2px; display: inline-block; }
     
-    /* Animasi blok baru */
+    /* Blok Visual */
+    .block-100 { width: 50px; height: 50px; background: #f87171; border: 2px solid #b91c1c; margin: 2px; display: inline-block; border-radius: 4px; }
+    .block-10 { width: 15px; height: 50px; background: #3b82f6; border: 2px solid #1d4ed8; margin: 2px; display: inline-block; border-radius: 2px; }
+    .block-1 { width: 15px; height: 15px; background: #facc15; border: 2px solid #a16207; margin: 2px; display: inline-block; border-radius: 50%; }
+
     .new-block-fade-in { animation: fadeIn 0.5s ease-in forwards; opacity: 0; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* === MULA: GAYA GRID BENTUK LAZIM (DARI KOD LAMA) === */
-    .lazim-grid {
-      display: inline-block;
-      font-family: monospace;
-      font-size: 2.25rem; /* 3xl (36px) */
-      line-height: 1.5;
-    }
-    .lazim-row {
-      display: flex;
-      justify-content: flex-end;  
-    }
-    .lazim-cell {
-      display: inline-block;
-      width: 2.3rem;  
-      height: 1.5em;  
-      text-align: center;
-      box-sizing: border-box;
-    }
-    .lazim-cell-plus {
-      display: inline-block;
-      width: 2.3rem;  
-      height: 1.5em;
-      text-align: right;
-      padding-right: 0.2rem;  
-      box-sizing: border-box;
-    }
+    /* Grid Bentuk Lazim */
+    .lazim-grid { display: inline-block; font-size: 2.5rem; line-height: 1.4; }
+    .lazim-row { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+    .lazim-cell { display: flex; width: 3.5rem; height: 3.5rem; align-items: center; justify-content: center; font-weight: bold; color: #475569; }
+    .lazim-cell-plus { display: flex; width: 3.5rem; height: 3.5rem; align-items: center; justify-content: flex-end; padding-right: 0.5rem; font-weight: bold; color: #475569; }
+    
     .lazim-input {
-      display: inline-block;
-      width: 2.3rem;  
-      height: 1.5em;  
-      text-align: center;
-      font-weight: bold;
-      font-family: monospace;  
-      font-size: 2.25rem;  
-      border: 2px solid #ccc;
-      border-radius: 4px;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;  
+        width: 3.5rem; height: 3.5rem; text-align: center; font-weight: bold; font-family: 'Fredoka', sans-serif; font-size: 2rem;
+        border: 3px solid #cbd5e1; border-radius: 0.75rem; margin: 0 2px; background: #fff; outline: none;
+        transition: all 0.2s;
     }
-    .lazim-input:disabled { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
-    .lazim-input.correct { background: #dcfce7; border-color: #22c55e; }
+    .lazim-input:focus { border-color: #3b82f6; }
+    .lazim-input:disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+    .lazim-input.correct { background: #dcfce7; border-color: #22c55e; color: #16a34a; }
+    .lazim-input.wrong { border-color: #ef4444; background: #fee2e2; animation: shake 0.4s; }
+
+    .lazim-hr { width: 100%; margin: 8px 0; border-top: 6px solid #475569; border-radius: 3px; }
     
-    .lazim-hr {
-      width: calc(2.3rem * 3);  
-      margin-left: 2.3rem;  
-      border-top: 2px solid black;
-      margin-top: 4px;
-      margin-bottom: 4px;
-    }
-    
+    /* --- PEMBETULAN CSS: KOTAK KUMPUL SEMULA (HIDDEN BY DEFAULT) --- */
     .lazim-carry-box {
-      display: inline-block;
-      width: 2.3rem;  
-      font-size: 1.5rem;  
-      color: #ef4444;  
-      font-weight: bold;
-      text-align: center;
-      box-sizing: border-box;
-      line-height: 1.2;  
-      vertical-align: bottom;
-      height: 1.2em; /* Tambah ketinggian tetap */
+        display: flex; width: 3.5rem; height: 2.5rem; align-items: center; justify-content: center;
+        font-size: 1.5rem; font-weight: bold; border-radius: 0.5rem; margin: 0 2px;
+        
+        /* Default: Halimunan */
+        background: transparent; border: 2px solid transparent; color: transparent;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     
-    .lazim-spacer {
-      display: inline-block;
-      width: 2.3rem;  
-      font-size: 1.5rem;  
-      box-sizing: border-box;
-      line-height: 1.2;
-      height: 1.2em; /* Tambah ketinggian tetap */
+    /* Bila aktif (nombor naik), baru muncul warna pink */
+    .lazim-carry-box.active {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #ef4444;
+        transform: scale(1.1);
     }
-    
-    .lazim-input[type=number] {
-      -moz-appearance: textfield;
-    }
-    .lazim-input[type=number]::-webkit-outer-spin-button,
-    .lazim-input[type=number]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    /* === TAMAT: GAYA GRID BENTUK LAZIM === */
 
-
-    /* Aktiviti 4: Cerakin */
-    .place-value-num { display: flex; justify-content: center; }
+    /* Cerakin Style */
+    .place-value-num { display: flex; justify-content: center; gap: 10px; }
     .place-value-digit {
-      font-size: 8rem; font-weight: 900;
-      padding: 0 1rem; cursor: pointer;
-      transition: all 0.3s ease;
+      font-size: 6rem; font-weight: 900;
+      padding: 1rem; cursor: pointer;
+      background: white; border: 4px solid #e2e8f0; border-radius: 1rem;
+      transition: all 0.1s ease;
+      box-shadow: 0 4px 0 #cbd5e1;
     }
-    .place-value-digit:hover { transform: scale(1.1); }
-    .place-value-digit.ratus { color: #dc2626; }
-    .place-value-digit.puluh { color: #2563eb; }
-    .place-value-digit.sa { color: #ca8a04; }
+    .place-value-digit:active { transform: translateY(4px); box-shadow: none; }
+    .place-value-digit.ratus { color: #dc2626; border-color: #fee2e2; }
+    .place-value-digit.puluh { color: #2563eb; border-color: #dbeafe; }
+    .place-value-digit.sa { color: #ca8a04; border-color: #fef9c3; }
 
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-full">
+<body class="min-h-screen text-slate-800 pb-10">
 
-  <div class="bg-yellow-100 border-b-4 border-yellow-300 p-4 shadow-sm sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
+  <div class="fixed top-4 left-0 right-0 z-50 px-4 pointer-events-none">
+    <div class="max-w-4xl mx-auto bg-green-400 border-4 border-green-600 rounded-full px-6 py-3 shadow-xl flex items-center justify-between pointer-events-auto transform hover:scale-[1.01] transition-transform">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">📚</span>
-        <span id="info-text" class="text-lg font-semibold text-gray-800">
-          Pilih aktiviti untuk belajar tambah (kumpul semula)!
-        </span>
+        <span class="text-3xl animate-bounce">📚</span>
+        <span id="info-text" class="text-xl font-bold text-green-900 leading-none mt-1">Operasi Tambah (Kumpul Semula)</span>
       </div>
-      <button id="speak-btn"
-              class="bg-yellow-300 hover:bg-yellow-400 text-yellow-800 font-bold py-2 px-4 rounded-full text-xl transition-colors duration-200"
-              onclick="speakInfo()">
-        🔊
-      </button>
+      <button id="speak-btn" onclick="speakInfo()" class="bg-white hover:bg-green-50 text-green-600 border-2 border-green-200 rounded-full p-2 transition-colors shadow-sm">🔊</button>
     </div>
   </div>
+  <div class="h-24"></div>
 
-  <div class="max-w-6xl mx-auto p-6">
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 activity-card flex items-center justify-center">
-      <div id="activity-content" class="text-center w-full">
-        <div class="py-16">
-          <div class="text-6xl mb-4">🧮</div>
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">
-            Kemahiran Pemulihan: Operasi Tambah (Kumpul Semula)
-          </h2>
-          <p class="text-xl text-gray-600 mb-8">
-            Pilih aktiviti di bawah untuk meneroka cara mengumpul semula.
-          </p>
-          <div class="text-4xl">👇</div>
+  <div class="max-w-6xl mx-auto p-4">
+    
+    <div class="game-card p-6 mb-8 flex items-center justify-center">
+        <div id="activity-content" class="w-full relative z-10">
+            <div class="py-10 text-center">
+                <div class="text-8xl mb-6 animate-pulse">🧮</div>
+                <h2 class="text-5xl font-bold text-emerald-600 mb-4">Kumpul Semula</h2>
+                <p class="text-2xl text-slate-500 mb-8 font-semibold">Belajar tambah dengan lebih mendalam!</p>
+                <div class="text-4xl animate-bounce">👇</div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Pilih Aktiviti</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <button onclick="loadActivity(1)"
-                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors duration-200">
-          🧱 Makmal Blok 10
-        </button>
-        <button onclick="loadActivity(2)"
-                class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors duration-200">
-          ✍️ Bentuk Lazim (Berpandu)
-        </button>
-        <button onclick="loadActivity(3)"
-                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors duration-200">
-          💡 Fokus: Sa ke Puluh
-        </button>
-        <button onclick="loadActivity(4)"
-                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors duration-200">
-          🔍 Cerakin Nilai Tempat
-        </button>
-        <button onclick="loadActivity(5)"
-                class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors duration-200">
-          ⚙️ Mesin Tambah
-        </button>
+    <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-2 border-white">
+      <h3 class="text-2xl font-bold text-slate-700 mb-4 text-center">🎮 Pilih Aktiviti</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <button onclick="loadActivity(1)" class="btn-3d bg-blue-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🧱 Blok Asas 10</button>
+        <button onclick="loadActivity(2)" class="btn-3d bg-emerald-500 text-white font-bold py-4 px-2 rounded-xl text-lg">✍️ Bentuk Lazim</button>
+        <button onclick="loadActivity(3)" class="btn-3d bg-violet-500 text-white font-bold py-4 px-2 rounded-xl text-lg">💡 Fokus Sa-Puluh</button>
+        <button onclick="loadActivity(4)" class="btn-3d bg-orange-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🔍 Cerakin Nilai</button>
+        <button onclick="loadActivity(5)" class="btn-3d bg-rose-500 text-white font-bold py-4 px-2 rounded-xl text-lg">⚙️ Mesin Tambah</button>
       </div>
 
-      <div class="flex justify-center gap-4">
-        <button onclick="clearActivity()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg text-lg transition-colors duration-200">
-          🧹 Bersih
-        </button>
-        <button onclick="nextActivity()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg text-lg transition-colors duration-200">
-          ➡️ Seterusnya
-        </button>
+      <div class="flex justify-center gap-4 border-t-2 border-slate-100 pt-6">
+        <button onclick="clearActivity()" class="btn-3d bg-slate-400 text-white font-bold py-2 px-6 rounded-full text-lg">🏠 Menu</button>
+        <button onclick="nextActivity()" class="btn-3d bg-indigo-500 text-white font-bold py-2 px-8 rounded-full text-xl">Seterusnya ➡️</button>
       </div>
     </div>
   </div>
 
   <script>
+    /* --- STANDARD HELPERS --- */
     let currentActivity = 0;
     let ttsEnabled = false;
-    let currentInfo = "Pilih aktiviti untuk belajar tambah (kumpul semula)!";
-    let draggedElement = null; // Masih simpan untuk rujukan masa depan
-
-    /* ====== TTS ====== */
-    function speak(text) {
-      if (!ttsEnabled) return;
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      setTimeout(() => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'ms-MY';
-        u.rate = 0.9; u.pitch = 1.05;
-        const voices = window.speechSynthesis.getVoices();
-        const ms = voices.find(v => v.lang === 'ms-MY' || v.lang?.startsWith('ms'));
-        if (ms) u.voice = ms;
-        window.speechSynthesis.speak(u);
-      }, 100);
+    let currentInfo = "Pilih aktiviti untuk mula.";
+    
+    function triggerWin() { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }
+    
+    function speak(text) { 
+        if (!ttsEnabled || !('speechSynthesis' in window)) return; 
+        window.speechSynthesis.cancel(); 
+        const u = new SpeechSynthesisUtterance(text); 
+        u.lang = 'ms-MY'; u.rate = 0.9; u.pitch = 1.1; 
+        const voices = window.speechSynthesis.getVoices(); 
+        const ms = voices.find(v => v.lang === 'ms-MY' || v.lang?.startsWith('ms')); 
+        if (ms) u.voice = ms; 
+        window.speechSynthesis.speak(u); 
     }
-    function setInfo(text) { currentInfo = text; document.getElementById('info-text').textContent = text; }
-    function speakInfo() {
-      if (!ttsEnabled) {
-        ttsEnabled = true;
-        const btn = document.getElementById('speak-btn');
-        btn.classList.add('bg-green-300', 'hover:bg-green-400');
-        btn.classList.remove('bg-yellow-300', 'hover:bg-yellow-400');
-      }
-      speak(currentInfo);
+    
+    function setInfo(text) { 
+        currentInfo = text; 
+        const infoEl = document.getElementById('info-text'); 
+        infoEl.style.opacity = 0; 
+        setTimeout(() => { infoEl.textContent = text; infoEl.style.opacity = 1; }, 200); 
+    }
+    
+    function speakInfo() { 
+        if (!ttsEnabled) { 
+            ttsEnabled = true; 
+            document.getElementById('speak-btn').classList.add('bg-green-100', 'text-green-600'); 
+        } 
+        speak(currentInfo); 
     }
 
-    /* ====== DnD helpers (Simpan untuk rujukan) ====== */
-    function dragStart(e) { draggedElement = e.target; e.target.classList.add('dragging'); }
-    function dragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drop-zone').forEach(z=>z.classList.remove('drag-over')); }
-    function allowDrop(e) { e.preventDefault(); if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.add('drag-over'); }
-    function dragLeave(e) { if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.remove('drag-over'); }
-
-    /* ====== Router ====== */
+    /* --- ROUTER --- */
     function loadActivity(n) {
       currentActivity = n;
       const content = document.getElementById('activity-content');
-      content.innerHTML = ''; // Kosongkan sebelum muat
-      if (n === 1) return loadBlokAsasActivity(content);
-      if (n === 2) return loadBentukLazimActivity(content);
-      if (n === 3) return loadFokusSaPuluhActivity(content);
-      if (n === 4) return loadCerakinNilaiActivity(content);
-      if (n === 5) return loadMesinTambahActivity(content);
+      content.style.opacity = 0;
+      setTimeout(() => {
+          content.innerHTML = ''; 
+          if (n === 1) loadActivity1_BlokAsas(content);
+          if (n === 2) loadActivity2_Lazim(content);
+          if (n === 3) loadActivity3_Fokus(content);
+          if (n === 4) loadActivity4_Cerakin(content);
+          if (n === 5) loadActivity5_Mesin(content);
+          content.style.opacity = 1;
+      }, 200);
     }
 
-    /* ====== Aktiviti 1: Makmal Blok Asas 10 ====== */
-    function loadBlokAsasActivity(content) {
-      setInfo("Mari kita gabungkan 353 dan 162 guna blok. Tekan 'Gabung'.");
+    function clearActivity() {
+        currentActivity = 0;
+        document.getElementById('activity-content').innerHTML = `<div class="py-10 text-center"><div class="text-8xl mb-6 animate-bounce">🧮</div><h2 class="text-5xl font-bold text-emerald-600 mb-4">Kumpul Semula</h2><p class="text-2xl text-slate-500 mb-8 font-semibold">Pilih butang di bawah.</p></div>`;
+        setInfo("Pilih aktiviti untuk mula.");
+    }
+    function nextActivity() { let next = currentActivity + 1; if (next > 5) next = 1; loadActivity(next); }
+
+    /* =========================================
+       AKTIVITI 1: Makmal Blok Asas 10
+       ========================================= */
+    function loadActivity1_BlokAsas(content) {
+      setInfo("Gabung 353 + 162 guna blok. Tekan 'Gabung'.");
       
       const drawBlocks = (r, p, s) => {
         let h = '', t = '', o = '';
         for(let i=0; i<r; i++) h += '<div class="block-100" title="100"></div>';
-        for(let i=0; i<p; i++) t += `<div class="block-10 block-10-puluh-${i}" title="10"></div>`;
+        for(let i=0; i<p; i++) t += `<div class="block-10" title="10"></div>`;
         for(let i=0; i<s; i++) o += '<div class="block-1" title="1"></div>';
-        return `<div class="mb-2"><h4 class="font-bold text-left text-sm text-gray-600">Ratus</h4>${h}</div>
-                <div class="mb-2"><h4 class="font-bold text-left text-sm text-gray-600">Puluh</h4>${t}</div>
-                <div><h4 class="font-bold text-left text-sm text-gray-600">Sa</h4>${o}</div>`;
+        return `<div class="mb-1"><span class="text-xs font-bold text-slate-400">RATUS</span><br>${h}</div>
+                <div class="mb-1"><span class="text-xs font-bold text-slate-400">PULUH</span><br>${t}</div>
+                <div><span class="text-xs font-bold text-slate-400">SA</span><br>${o}</div>`;
       };
       
       content.innerHTML = `
-        <h3 class="text-2xl font-bold text-blue-600 mb-6">🧱 Makmal Blok Asas 10</h3>
-        <p class="text-lg mb-4">Mari tambah: <strong>353 + 162</strong></p>
+        <h3 class="text-4xl font-bold text-blue-500 mb-6 text-center">🧱 Makmal Blok Asas 10</h3>
+        <p class="text-2xl font-bold text-center mb-6 text-slate-600">353 + 162</p>
         
-        <div id="step1" class="base-10-container mb-4">
+        <div id="step1" class="base-10-container mb-6">
           <div class="base-10-mat">
-            <h3 class="text-xl font-bold">353</h3>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">353</h3>
             ${drawBlocks(3, 5, 3)}
           </div>
-          <div class="text-5xl font-bold self-center">+</div>
+          <div class="text-5xl font-bold self-center text-slate-300">+</div>
           <div class="base-10-mat">
-            <h3 class="text-xl font-bold">162</h3>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">162</h3>
             ${drawBlocks(1, 6, 2)}
           </div>
         </div>
         
-        <hr id="divider-line" class="my-6 border-gray-300 border-dashed hidden">
+        <hr id="divider-line" class="my-6 border-slate-200 border-dashed hidden">
         
-        <div id="step2" class="base-10-mat base-10-combine-mat hidden">
-          <h3 class="text-xl font-bold">Hasil Gabungan (???)</h3>
-          <div class="flex gap-4">
+        <div id="step2" class="base-10-mat base-10-combine-mat hidden mx-auto max-w-3xl">
+          <h3 class="text-xl font-bold text-emerald-700 mb-4 text-center">Hasil Gabungan</h3>
+          <div class="flex gap-4 justify-center">
             <div id="col-ratus" class="base-10-col w-1/3">
-              <h4 class="font-bold text-center text-sm text-gray-600">Ratus</h4>
-              <div id="blocks-ratus" class="flex flex-wrap"></div> 
-              <div id="text-ratus" class="text-center font-bold text-lg mt-2 h-6"></div>
+              <h4 class="font-bold text-center text-sm text-slate-400">RATUS</h4>
+              <div id="blocks-ratus" class="flex flex-wrap justify-center p-2"></div> 
+              <div id="text-ratus" class="text-center font-bold text-lg mt-2 h-6 text-red-500"></div>
             </div>
             <div id="col-puluh" class="base-10-col w-1/3">
-              <h4 class="font-bold text-center text-sm text-gray-600">Puluh</h4>
-              <div id="blocks-puluh" class="flex flex-wrap"></div> 
-              <div id="text-puluh" class="text-center font-bold text-lg mt-2 h-6"></div>
+              <h4 class="font-bold text-center text-sm text-slate-400">PULUH</h4>
+              <div id="blocks-puluh" class="flex flex-wrap justify-center p-2 gap-1"></div> 
+              <div id="text-puluh" class="text-center font-bold text-lg mt-2 h-6 text-blue-500"></div>
             </div>
             <div id="col-sa" class="base-10-col w-1/3">
-              <h4 class="font-bold text-center text-sm text-gray-600">Sa</h4>
-              <div id="blocks-sa" class="flex flex-wrap"></div> 
-              <div id="text-sa" class="text-center font-bold text-lg mt-2 h-6"></div>
+              <h4 class="font-bold text-center text-sm text-slate-400">SA</h4>
+              <div id="blocks-sa" class="flex flex-wrap justify-center p-2 gap-1"></div> 
+              <div id="text-sa" class="text-center font-bold text-lg mt-2 h-6 text-yellow-600"></div>
             </div>
           </div>
         </div>
 
-        <div class="mt-6">
-          <button id="btn-gabung" onclick="runCombineAnimation()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg">
-            1. Gabung!
+        <div class="mt-8 text-center">
+          <button id="btn-gabung" onclick="runCombineAnimation()" class="btn-3d bg-blue-500 text-white font-bold py-3 px-8 rounded-xl text-xl">
+            Gabungkan! 🪄
           </button>
-          <button id="btn-kumpul" onclick="runRegroupAnimation()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg text-lg hidden" disabled>
-            2. Kumpul Semula!
+          <button id="btn-kumpul" onclick="runRegroupAnimation()" class="btn-3d bg-rose-500 text-white font-bold py-3 px-8 rounded-xl text-xl hidden" disabled>
+            Kumpul Semula! 🔄
           </button>
         </div>
       `;
     }
-    
-    function runCombineAnimation() {
+
+    window.runCombineAnimation = function() {
       document.getElementById('btn-gabung').disabled = true;
-      setInfo("OK, mari kita gabungkan...");
+      document.getElementById('btn-gabung').classList.add('opacity-50', 'cursor-not-allowed');
       
-      // Tunjuk garisan pemisah dan kotak step2 (Kosong)
       document.getElementById('divider-line').classList.remove('hidden');
       document.getElementById('step2').classList.remove('hidden');
 
-      // Peringkat 2a: Lajur Sa (Selepas 0.5s)
+      // Animasi Sa
       setTimeout(() => {
-        setInfo("Mula dari 'Sa'. 3 tambah 2 ialah 5.");
+        setInfo("Mula dari Sa. 3 + 2 = 5.");
         speak("Mula dari 'Sa'. 3 tambah 2 ialah 5.");
-        const saCol = document.getElementById('col-sa');
-        saCol.classList.add('bg-green-100'); // Serlahkan lajur
-        document.getElementById('text-sa').textContent = "3 + 2 = 5";
+        document.getElementById('col-sa').classList.add('bg-yellow-50', 'border-yellow-200');
+        document.getElementById('text-sa').textContent = "5";
         document.getElementById('blocks-sa').innerHTML = Array(5).fill('<div class="block-1 new-block-fade-in"></div>').join('');
       }, 500);
       
-      // Peringkat 2b: Lajur Puluh (Selepas 2s)
+      // Animasi Puluh
       setTimeout(() => {
-        setInfo("'Puluh' pula. 5 tambah 6 ialah 11.");
-        speak("'Puluh' pula. 5 tambah 6 ialah 11.");
-        document.getElementById('col-sa').classList.remove('bg-green-100'); // Buang serlahan
-        const puluhCol = document.getElementById('col-puluh');
-        puluhCol.classList.add('bg-red-100', 'border-red-400'); // Serlahkan lajur
-        document.getElementById('text-puluh').textContent = "5 + 6 = 11";
-        document.getElementById('blocks-puluh').innerHTML = Array(11).fill(0).map((_,i) => `<div class="block-10 block-10-puluh-${i} new-block-fade-in" title="10"></div>`).join('');
-      }, 2000);
+        setInfo("Puluh pula. 5 + 6 = 11.");
+        speak("Puluh pula. 5 tambah 6 ialah 11.");
+        document.getElementById('col-sa').classList.remove('bg-yellow-50', 'border-yellow-200');
+        document.getElementById('col-puluh').classList.add('bg-rose-100', 'border-rose-400');
+        document.getElementById('text-puluh').textContent = "11";
+        document.getElementById('blocks-puluh').innerHTML = Array(11).fill(0).map((_,i) => `<div class="block-10 new-block-fade-in"></div>`).join('');
+      }, 2500);
 
-      // Peringkat 2c: Lajur Ratus (Selepas 3.5s)
+      // Animasi Ratus
       setTimeout(() => {
-        setInfo("Akhir sekali, 'Ratus'. 3 tambah 1 ialah 4.");
-        speak("Akhir sekali, 'Ratus'. 3 tambah 1 ialah 4.");
-        const ratusCol = document.getElementById('col-ratus');
-        ratusCol.classList.add('bg-green-100'); // Serlahkan lajur
-        document.getElementById('text-ratus').textContent = "3 + 1 = 4";
+        setInfo("Akhir sekali Ratus. 3 + 1 = 4.");
+        speak("Ratus pula. 3 tambah 1 ialah 4.");
+        document.getElementById('col-ratus').classList.add('bg-red-50');
+        document.getElementById('text-ratus').textContent = "4";
         document.getElementById('blocks-ratus').innerHTML = Array(4).fill('<div class="block-100 new-block-fade-in"></div>').join('');
-      }, 3500);
+      }, 4500);
 
-      // Peringkat 2d: Sedia (Selepas 5s)
+      // Trigger Kumpul Semula
       setTimeout(() => {
-        setInfo("Oh, lihat! Ada 11 blok 'puluh'. Kita perlu kumpul semula. Tekan 'Kumpul Semula'.");
-        speak("Oh, lihat! Ada 11 blok 'puluh'. Kita perlu kumpul semula. Tekan 'Kumpul Semula'.");
-        // Kemaskan teks
-        document.getElementById('col-ratus').classList.remove('bg-green-100');
-        document.getElementById('text-sa').textContent = "";
-        document.getElementById('text-puluh').textContent = "11 (Perlu kumpul)";
-        document.getElementById('text-ratus').textContent = "";
-        // Tunjuk butang
+        setInfo("Alamak! Ada 11 Puluh. Kena kumpul semula!");
+        speak("Ada 11 Puluh. Kena kumpul semula. Tekan butang merah.");
+        document.getElementById('col-ratus').classList.remove('bg-red-50');
         const btnKumpul = document.getElementById('btn-kumpul');
         btnKumpul.classList.remove('hidden');
         btnKumpul.disabled = false;
-      }, 5000);
+        document.getElementById('btn-gabung').style.display = 'none';
+      }, 6000);
     }
 
-    function runRegroupAnimation() {
+    window.runRegroupAnimation = function() {
       document.getElementById('btn-kumpul').disabled = true;
-      setInfo("Bagus! 10 blok 'puluh' ditukar menjadi 1 'ratus'...");
-      speak("Bagus! 10 blok 'puluh' ditukar menjadi 1 'ratus'...");
+      setInfo("10 Puluh ditukar jadi 1 Ratus...");
+      speak("10 puluh ditukar jadi 1 ratus.");
       
-      // Kosongkan teks penjelasan
-      document.getElementById('text-puluh').textContent = "";
-
-      // 1. Tambah blok ratus baru
       const newBlock = document.createElement('div');
-      newBlock.className = 'block-100 new-block-fade-in'; // Guna animasi 'fadeIn'
+      newBlock.className = 'block-100 new-block-fade-in';
       document.getElementById('blocks-ratus').appendChild(newBlock);
+      document.getElementById('text-ratus').textContent = "5";
       
-      // 2. Betulkan warna lajur
       const colPuluh = document.getElementById('col-puluh');
-      colPuluh.classList.remove('bg-red-100', 'border-red-400');
-      colPuluh.classList.add('bg-green-100'); // Bertukar jadi hijau
+      colPuluh.classList.remove('bg-rose-100', 'border-rose-400');
+      colPuluh.classList.add('bg-blue-50');
 
-      // 3. Betulkan blok puluh SERTA MERTA
       const blocksPuluhContainer = document.getElementById('blocks-puluh');
-      if (blocksPuluhContainer) {
-          // Padam semua 11 blok yang ada
-          blocksPuluhContainer.innerHTML = '';
-              
-          // Masukkan semula 1 blok 'puluh' yang baki.
-          blocksPuluhContainer.innerHTML = '<div class="block-10 new-block-fade-in" title="10"></div>';
-      }
-      
-      // Tukar tajuk akhir
-      document.querySelector('#step2 h3').textContent = "Hasil Gabungan (515)";
+      blocksPuluhContainer.innerHTML = '<div class="block-10 new-block-fade-in"></div>';
+      document.getElementById('text-puluh').textContent = "1";
 
-      // 4. Tunjuk hasil akhir selepas sedikit lengah masa
+      document.querySelector('#step2 h3').textContent = "Jawapan: 515";
+      triggerWin();
       setTimeout(() => {
-        setInfo("Syabas! Jawapannya ialah 5 ratus, 1 puluh, dan 5 sa. Iaitu 515.");
-        speak("Syabas! Jawapannya ialah 5 ratus, 1 puluh, dan 5 sa. Iaitu 515.");
-        colPuluh.classList.remove('bg-green-100'); // Kembali normal
-      }, 1500); // Tunggu 1.5 saat
+        setInfo("Tahniah! Jawapan ialah 515.");
+        colPuluh.classList.remove('bg-blue-50');
+      }, 1500);
     }
 
-
-    /* ====== Aktiviti 2: Bentuk Lazim (Berpandu) ====== */
-    function loadBentukLazimActivity(content) {
-      setInfo("Mari selesaikan 353 + 162 dalam bentuk lazim. Mula dari lajur 'Sa'.");
+    /* =========================================
+       AKTIVITI 2: Bentuk Lazim
+       ========================================= */
+    function loadActivity2_Lazim(content) {
+      setInfo("Selesaikan 353 + 162. Mula dari 'Sa'.");
+      
       content.innerHTML = `
-        <h3 class="text-2xl font-bold text-green-600 mb-6">✍️ Bentuk Lazim (Berpandu)</h3>
-        
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
-          <div class="lazim-grid">
-            <div class="lazim-row">
-              <span class="lazim-spacer">&nbsp;</span>
-              <span class="lazim-carry-box" id="carry-r"></span>
-              <span class="lazim-carry-box" id="carry-p"></span>
-              <span class="lazim-spacer">&nbsp;</span> 
-            </div>
-            <div class="lazim-row">
-              <span class="lazim-cell">&nbsp;</span>
-              <span class="lazim-cell">3</span>
-              <span class="lazim-cell">5</span>
-              <span class="lazim-cell">3</span>
-            </div>
-            <div class="lazim-row">
-              <span class="lazim-cell-plus">+</span>
-              <span class="lazim-cell">1</span>
-              <span class="lazim-cell">6</span>
-              <span class="lazim-cell">2</span>
-            </div>
-            <hr class="lazim-hr">
-            <div class="lazim-row">
-              <span class="lazim-cell">&nbsp;</span> 
-              <input type="number" id="ans-r" class="lazim-input" maxlength="1" onkeyup="checkLazim(2, 'r', '5')" disabled />
-              <input type="number" id="ans-p" class="lazim-input" maxlength="2" onkeyup="checkLazim(2, 'p', '11')" disabled />
-              <input type="number" id="ans-s" class="lazim-input" maxlength="1" onkeyup="checkLazim(2, 's', '5')" />
+        <h3 class="text-4xl font-bold text-emerald-500 mb-6 text-center">✍️ Bentuk Lazim</h3>
+        <div class="flex justify-center">
+          <div class="bg-slate-50 border-4 border-slate-200 rounded-3xl p-8 inline-block shadow-sm">
+            <div class="lazim-grid">
+              <div class="lazim-row" style="height: 2.5rem;">
+                <span class="w-[3.5rem]"></span>
+                <span class="lazim-carry-box" id="carry-r"></span>
+                <span class="lazim-carry-box" id="carry-p"></span>
+                <span class="w-[3.5rem]"></span>
+              </div>
+              <div class="lazim-row">
+                <span class="lazim-cell"></span><span class="lazim-cell">3</span><span class="lazim-cell">5</span><span class="lazim-cell">3</span>
+              </div>
+              <div class="lazim-row">
+                <span class="lazim-cell-plus">+</span><span class="lazim-cell">1</span><span class="lazim-cell">6</span><span class="lazim-cell">2</span>
+              </div>
+              <div class="lazim-hr"></div>
+              <div class="lazim-row">
+                <span class="lazim-cell"></span>
+                <input type="number" id="ans-r" class="lazim-input" maxlength="1" disabled />
+                <input type="number" id="ans-p" class="lazim-input" maxlength="2" disabled />
+                <input type="number" id="ans-s" class="lazim-input" maxlength="1" />
+              </div>
             </div>
           </div>
         </div>
-        <p id="lazim-feedback" class="text-lg text-gray-700 mt-4 h-8"></p>
+        <div id="lazim-feedback" class="mt-8 text-center text-xl font-bold text-emerald-700 h-8"></div>
       `;
-      setTimeout(() => document.getElementById('ans-s').focus(), 100);
+      
+      const inpSa = document.getElementById('ans-s');
+      const inpPu = document.getElementById('ans-p');
+      const inpRa = document.getElementById('ans-r');
+      const cPu = document.getElementById('carry-p');
+      const cRa = document.getElementById('carry-r');
+      const fb = document.getElementById('lazim-feedback');
+      
+      inpSa.focus();
+
+      inpSa.addEventListener('keyup', () => {
+         if(inpSa.value === '5') {
+             inpSa.classList.add('correct'); inpSa.disabled = true;
+             fb.textContent = "Betul! Sekarang Puluh."; setInfo("5 + 6 = ?");
+             inpPu.disabled = false; inpPu.focus();
+         } else if(inpSa.value.length > 0) { inpSa.classList.add('wrong'); setTimeout(()=>inpSa.classList.remove('wrong'),400); }
+      });
+
+      inpPu.addEventListener('keyup', () => {
+         if(inpPu.value === '11') {
+             inpPu.classList.add('correct'); inpPu.disabled = true;
+             fb.textContent = "11! Kumpul semula..."; setInfo("11 tak muat. Kumpul semula 1 ke Ratus.");
+             setTimeout(() => {
+                 inpPu.value = '1'; 
+                 // PEMBETULAN: Tunjuk kotak carry dgn class active
+                 cRa.textContent = '1'; 
+                 cRa.classList.add('active'); 
+                 
+                 fb.textContent = "Sekarang Ratus.";
+                 inpRa.disabled = false; inpRa.focus();
+             }, 1000);
+         } else if(inpPu.value.length > 1) { inpPu.classList.add('wrong'); setTimeout(()=>inpPu.classList.remove('wrong'),400); }
+      });
+
+      inpRa.addEventListener('keyup', () => {
+         if(inpRa.value === '5') { 
+             inpRa.classList.add('correct'); inpRa.disabled = true;
+             fb.textContent = "Tahniah! 515."; setInfo("Jawapan betul 515!");
+             triggerWin();
+         } else if(inpRa.value.length > 0) { inpRa.classList.add('wrong'); setTimeout(()=>inpRa.classList.remove('wrong'),400); }
+      });
     }
 
-    /* ====== Aktiviti 3: Fokus Sa ke Puluh ====== */
-    function loadFokusSaPuluhActivity(content) {
-      setInfo("Soalan ini berbeza. Mari tambah 218 + 145. Mula dari lajur 'Sa'.");
+    /* =========================================
+       AKTIVITI 3: Fokus Sa ke Puluh
+       ========================================= */
+    function loadActivity3_Fokus(content) {
+      setInfo("Soalan: 218 + 145. Mula dari 'Sa'.");
+      
       content.innerHTML = `
-        <h3 class="text-2xl font-bold text-purple-600 mb-6">💡 Fokus: Sa ke Puluh</h3>
-        
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
-          <div class="lazim-grid">
-            <div class="lazim-row">
-              <span class="lazim-spacer">&nbsp;</span>
-              <span class="lazim-carry-box" id="carry-r"></span>
-              <span class="lazim-carry-box" id="carry-p"></span>
-              <span class="lazim-spacer">&nbsp;</span> 
-            </div>
-            <div class="lazim-row">
-              <span class="lazim-cell">&nbsp;</span>
-              <span class="lazim-cell">2</span>
-              <span class="lazim-cell">1</span>
-              <span class="lazim-cell">8</span>
-            </div>
-            <div class="lazim-row">
-              <span class="lazim-cell-plus">+</span>
-              <span class="lazim-cell">1</span>
-              <span class="lazim-cell">4</span>
-              <span class="lazim-cell">5</span>
-            </div>
-            <hr class="lazim-hr">
-            <div class="lazim-row">
-              <span class="lazim-cell">&nbsp;</span> 
-              <input type="number" id="ans-r" class="lazim-input" maxlength="1" onkeyup="checkLazim(3, 'r', '3')" disabled />
-              <input type="number" id="ans-p" class="lazim-input" maxlength="1" onkeyup="checkLazim(3, 'p', '6')" disabled />
-              <input type="number" id="ans-s" class="lazim-input" maxlength="2" onkeyup="checkLazim(3, 's', '13')" />
+        <h3 class="text-4xl font-bold text-violet-500 mb-6 text-center">💡 Fokus: Sa ke Puluh</h3>
+        <div class="flex justify-center">
+          <div class="bg-violet-50 border-4 border-violet-200 rounded-3xl p-8 inline-block shadow-sm">
+            <div class="lazim-grid">
+              <div class="lazim-row" style="height: 2.5rem;">
+                <span class="w-[3.5rem]"></span>
+                <span class="lazim-carry-box" id="carry-r"></span>
+                <span class="lazim-carry-box" id="carry-p"></span>
+                <span class="w-[3.5rem]"></span>
+              </div>
+              <div class="lazim-row">
+                <span class="lazim-cell"></span><span class="lazim-cell">2</span><span class="lazim-cell">1</span><span class="lazim-cell">8</span>
+              </div>
+              <div class="lazim-row">
+                <span class="lazim-cell-plus">+</span><span class="lazim-cell">1</span><span class="lazim-cell">4</span><span class="lazim-cell">5</span>
+              </div>
+              <div class="lazim-hr"></div>
+              <div class="lazim-row">
+                <span class="lazim-cell"></span>
+                <input type="number" id="ans-r" class="lazim-input" maxlength="1" disabled />
+                <input type="number" id="ans-p" class="lazim-input" maxlength="1" disabled />
+                <input type="number" id="ans-s" class="lazim-input" maxlength="2" />
+              </div>
             </div>
           </div>
         </div>
-        <p id="lazim-feedback" class="text-lg text-gray-700 mt-4 h-8"></p>
+        <div id="fokus-feedback" class="mt-8 text-center text-xl font-bold text-violet-700 h-8"></div>
       `;
-      setTimeout(() => document.getElementById('ans-s').focus(), 100);
+      
+      const inpSa = document.getElementById('ans-s');
+      const inpPu = document.getElementById('ans-p');
+      const inpRa = document.getElementById('ans-r');
+      const cPu = document.getElementById('carry-p');
+      const fb = document.getElementById('fokus-feedback');
+      
+      inpSa.focus();
+
+      inpSa.addEventListener('keyup', () => {
+         if(inpSa.value === '13') {
+             inpSa.classList.add('correct'); inpSa.disabled = true;
+             fb.textContent = "13! Kumpul semula..."; 
+             setTimeout(() => {
+                 inpSa.value = '3'; 
+                 // PEMBETULAN: Tunjuk kotak carry dgn class active
+                 cPu.textContent = '1'; 
+                 cPu.classList.add('active');
+                 
+                 fb.textContent = "Sekarang Puluh. 1+1+4=?";
+                 inpPu.disabled = false; inpPu.focus();
+             }, 1000);
+         } else if(inpSa.value.length > 1) { inpSa.classList.add('wrong'); setTimeout(()=>inpSa.classList.remove('wrong'),400); }
+      });
+
+      inpPu.addEventListener('keyup', () => {
+         if(inpPu.value === '6') { 
+             inpPu.classList.add('correct'); inpPu.disabled = true;
+             fb.textContent = "Betul! Sekarang Ratus.";
+             inpRa.disabled = false; inpRa.focus();
+         } else if(inpPu.value.length > 0) { inpPu.classList.add('wrong'); setTimeout(()=>inpPu.classList.remove('wrong'),400); }
+      });
+
+      inpRa.addEventListener('keyup', () => {
+         if(inpRa.value === '3') { 
+             inpRa.classList.add('correct'); inpRa.disabled = true;
+             fb.textContent = "Tahniah! 363."; 
+             triggerWin();
+         } else if(inpRa.value.length > 0) { inpRa.classList.add('wrong'); setTimeout(()=>inpRa.classList.remove('wrong'),400); }
+      });
     }
 
-    /* ====== Logik Helper untuk Aktiviti 2 & 3 ====== */
-    function checkLazim(activityNum, col, correct) {
-      const feedback = document.getElementById('lazim-feedback');
-      const ansS = document.getElementById('ans-s');
-      const ansP = document.getElementById('ans-p');
-      const ansR = document.getElementById('ans-r');
-      const carryP = document.getElementById('carry-p');
-      const carryR = document.getElementById('carry-r');
-
-      // Dapatkan elemen input semasa
-      let currentInput;
-      if (col === 's') currentInput = ansS;
-      if (col === 'p') currentInput = ansP;
-      if (col === 'r') currentInput = ansR;
-      
-      // Goncang jika salah
-      if (currentInput.value !== correct) {
-          // Jangan goncang jika belum habis taip (untuk nombor 2-digit)
-          if ( (col === 'p' && activityNum === 2 && currentInput.value.length < correct.length) ) return; 
-          if ( (col === 's' && activityNum === 3 && currentInput.value.length < correct.length) ) return; 
-          
-          currentInput.classList.add('shake');
-          setTimeout(() => currentInput.classList.remove('shake'), 500);
-          return;
-      }
-      
-      // Input betul, proses logik
-      currentInput.classList.remove('shake');
-      currentInput.classList.add('correct'); 
-      
-      // Logik untuk Aktiviti 2 (353 + 162)
-      if (activityNum === 2) {
-        if (col === 's') { // ansS.value === '5'
-          feedback.textContent = "Betul! 3 + 2 = 5. Sekarang lajur 'Puluh'.";
-          setInfo("Betul! 3 + 2 = 5. Sekarang lajur 'Puluh'. 5 + 6 = ?");
-          speak("Betul! 3 + 2 = 5. Sekarang lajur 'Puluh'. 5 tambah 6 berapa?");
-          ansS.disabled = true; ansP.disabled = false; ansP.focus();
-        } else if (col === 'p') { // ansP.value === '11'
-          feedback.textContent = "Ya, 11! Ia tak muat. Mari kumpul semula...";
-          setInfo("Ya, 11! Ia tak muat. Mari kumpul semula...");
-          speak("Ya, 11! Ia tak muat. Mari kumpul semula...");
-          ansP.disabled = true;
-          setTimeout(() => {
-            carryR.textContent = '1'; 
-            ansP.value = '1';
-            feedback.textContent = "Bagus! Sekarang lajur 'Ratus'.";
-            setInfo("Bagus! Sekarang lajur 'Ratus'. 1 + 3 + 1 = ?");
-            speak("Bagus! Sekarang lajur 'Ratus'. 1 tambah 3 tambah 1 berapa?");
-            ansR.disabled = false; ansR.focus();
-          }, 1500);
-        } else if (col === 'r') { // ansR.value === '5'
-          feedback.textContent = "Syabas! Jawapannya 515.";
-          setInfo("Syabas! 353 tambah 162 ialah 515.");
-          speak("Syabas! 353 tambah 162 ialah 515.");
-          ansR.disabled = true;
-        }
-      }
-      
-      // Logik untuk Aktiviti 3 (218 + 145)
-      if (activityNum === 3) {
-        if (col === 's') { // ansS.value === '13'
-          feedback.textContent = "Ya, 13! Ia tak muat. Mari kumpul semula...";
-          setInfo("Ya, 13! Ia tak muat. Mari kumpul semula...");
-          speak("Ya, 13! Ia tak muat. Mari kumpul semula...");
-          ansS.disabled = true;
-          setTimeout(() => {
-            carryP.textContent = '1';
-            ansS.value = '3';
-            feedback.textContent = "Bagus! Sekarang lajur 'Puluh'.";
-            setInfo("Bagus! Sekarang lajur 'Puluh'. 1 + 1 + 4 = ?");
-            speak("Bagus! Sekarang lajur 'Puluh'. 1 tambah 1 tambah 4 berapa?");
-            ansP.disabled = false; ansP.focus();
-          }, 1500);
-        } else if (col === 'p') { // ansP.value === '6'
-          feedback.textContent = "Betul! 1 + 1 + 4 = 6. Sekarang lajur 'Ratus'.";
-          setInfo("Betul! 1 + 1 + 4 = 6. Sekarang lajur 'Ratus'. 2 + 1 = ?");
-          speak("Betul! 1 tambah 1 tambah 4 sama dengan 6. Sekarang lajur 'Ratus'. 2 tambah 1 berapa?");
-          ansP.disabled = true; ansR.disabled = false; ansR.focus();
-        } else if (col === 'r') { // ansR.value === '3'
-          feedback.textContent = "Syabas! Jawapannya 363.";
-          setInfo("Syabas! 218 tambah 145 ialah 363.");
-          speak("Syabas! 218 tambah 145 ialah 363.");
-          ansR.disabled = true;
-        }
-      }
-    }
-
-
-    /* ====== Aktiviti 4: Cerakin Nilai Tempat ====== */
-    function loadCerakinNilaiActivity(content) {
-      setInfo("Mari teroka nilai tempat. Klik pada mana-mana digit nombor.");
+    /* =========================================
+       AKTIVITI 4: Cerakin Nilai
+       ========================================= */
+    function loadActivity4_Cerakin(content) {
+      setInfo("Klik pada digit untuk lihat nilainya.");
       content.innerHTML = `
-        <h3 class="text-2xl font-bold text-orange-600 mb-6">🔍 Cerakin Nilai Tempat</h3>
-        <div id="pv-number-container" class="mb-4">
-          </div>
-        <div id="pv-info" class="mt-6 p-4 bg-orange-50 rounded-lg text-center text-xl font-semibold text-orange-800 min-h-20">
-          Klik pada satu digit untuk lihat nilainya.
+        <h3 class="text-4xl font-bold text-orange-500 mb-6 text-center">🔍 Cerakin Nilai Tempat</h3>
+        <div id="pv-container" class="my-10"></div>
+        <div id="pv-info" class="mt-4 p-6 bg-white rounded-2xl border-2 border-orange-200 text-center text-2xl font-bold text-orange-800 min-h-[100px] shadow-sm flex items-center justify-center">
+          Klik mana-mana nombor di atas!
         </div>
-        <button onclick="generateNewPVNumber()" class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg">
-          Nombor Baru
-        </button>
-      `;
-      generateNewPVNumber();
-    }
-    
-    function generateNewPVNumber() {
-      const r = Math.floor(Math.random() * 899) + 100; // Nombor 3-digit
-      const [dr, dp, ds] = String(r).split('');
-      
-      document.getElementById('pv-number-container').innerHTML = `
-        <div class="place-value-num">
-          <div class="place-value-digit ratus" onclick="showPVInfo(${dr}, 'Ratus', ${dr*100})">${dr}</div>
-          <div class="place-value-digit puluh" onclick="showPVInfo(${dp}, 'Puluh', ${dp*10})">${dp}</div>
-          <div class="place-value-digit sa" onclick="showPVInfo(${ds}, 'Sa', ${ds})">${ds}</div>
+        <div class="text-center mt-8">
+            <button onclick="genNum()" class="btn-3d bg-orange-500 text-white font-bold py-2 px-8 rounded-xl text-lg">Nombor Baru 🎲</button>
         </div>
       `;
-      document.getElementById('pv-info').textContent = "Klik pada satu digit untuk lihat nilainya.";
-      setInfo("Nombor baru: " + r + ". Klik pada mana-mana digit.");
+      genNum();
     }
 
-    function showPVInfo(digit, place, value) {
-      const msg = `Digit ${digit} ini berada di tempat ${place}. Nilainya ialah ${value}.`;
-      document.getElementById('pv-info').textContent = msg;
-      setInfo(msg);
-      speak(msg);
+    window.genNum = function() {
+        const r = Math.floor(Math.random() * 899) + 100;
+        const [dr, dp, ds] = String(r).split('');
+        document.getElementById('pv-container').innerHTML = `
+            <div class="place-value-num">
+                <div class="place-value-digit ratus" onclick="showVal(${dr}, 'Ratus', ${dr*100})">${dr}</div>
+                <div class="place-value-digit puluh" onclick="showVal(${dp}, 'Puluh', ${dp*10})">${dp}</div>
+                <div class="place-value-digit sa" onclick="showVal(${ds}, 'Sa', ${ds})">${ds}</div>
+            </div>
+        `;
+        document.getElementById('pv-info').textContent = "Klik nombor!";
+        setInfo("Nombor: " + r);
     }
 
-    /* ====== Aktiviti 5: Mesin Tambah (Cerakin) ====== */
-    function loadMesinTambahActivity(content) {
-      setInfo("Mari kita cerakin nombor untuk menambah. 353 + 162.");
+    window.showVal = function(d, p, v) {
+        const txt = `Digit ${d} di tempat ${p}. Nilainya ${v}.`;
+        document.getElementById('pv-info').textContent = txt;
+        speak(txt);
+    }
+
+    /* =========================================
+       AKTIVITI 5: Mesin Tambah
+       ========================================= */
+    function loadActivity5_Mesin(content) {
+      setInfo("Kita cerakin untuk tambah: 353 + 162");
       content.innerHTML = `
-        <h3 class="text-2xl font-bold text-red-600 mb-6">⚙️ Mesin Tambah</h3>
-        
-        <div id="mesin-step1" class="space-y-4">
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <span class="text-3xl font-bold">353</span>
-            <span class="text-2xl mx-2">➡️</span>
-            <span class="text-xl font-semibold bg-red-100 text-red-700 p-2 rounded">300</span>
-            <span class="text-2xl mx-1">+</span>
-            <span class="text-xl font-semibold bg-blue-100 text-blue-700 p-2 rounded">50</span>
-            <span class="text-2xl mx-1">+</span>
-            <span class="text-xl font-semibold bg-yellow-100 text-yellow-700 p-2 rounded">3</span>
-          </div>
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <span class="text-3xl font-bold">162</span>
-            <span class="text-2xl mx-2">➡️</span>
-            <span class="text-xl font-semibold bg-red-100 text-red-700 p-2 rounded">100</span>
-            <span class="text-2xl mx-1">+</span>
-            <span class="text-xl font-semibold bg-blue-100 text-blue-700 p-2 rounded">60</span>
-            <span class="text-2xl mx-1">+</span>
-            <span class="text-xl font-semibold bg-yellow-100 text-yellow-700 p-2 rounded">2</span>
-          </div>
-          <button id="mesin-btn-1" class="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg" onclick="runMesinStep2()">
-            Tambah Ikut Nilai Tempat
-          </button>
-        </div>
+        <h3 class="text-4xl font-bold text-rose-500 mb-6 text-center">⚙️ Mesin Tambah</h3>
+        <div class="max-w-2xl mx-auto space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100">
+                <div class="flex items-center justify-center gap-2 text-xl mb-2">
+                    <span class="font-bold text-3xl">353</span> ➡️ 
+                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded font-bold">300</span> + 
+                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded font-bold">50</span> + 
+                    <span class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded font-bold">3</span>
+                </div>
+                <div class="flex items-center justify-center gap-2 text-xl">
+                    <span class="font-bold text-3xl">162</span> ➡️ 
+                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded font-bold">100</span> + 
+                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded font-bold">60</span> + 
+                    <span class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded font-bold">2</span>
+                </div>
+                <div class="text-center mt-4">
+                    <button id="m-btn-1" onclick="runMesin2()" class="btn-3d bg-rose-500 text-white font-bold py-2 px-6 rounded-lg">Tambah Ikut Nilai 👇</button>
+                </div>
+            </div>
 
-        <hr id="mesin-divider-1" class="my-6 border-gray-300 border-dashed hidden">
+            <div id="m-step2" class="hidden bg-rose-50 p-6 rounded-2xl border-2 border-rose-200 animate-pulse">
+                <p class="text-center font-bold mb-2">Tambah ikut kumpulan:</p>
+                <div class="grid grid-cols-1 gap-2 text-lg font-bold text-center">
+                    <div class="bg-white p-2 rounded text-red-600 border border-red-200">Ratus: 300 + 100 = 400</div>
+                    <div id="m-puluh-box" class="bg-white p-2 rounded text-blue-600 border border-blue-200">Puluh: 50 + 60 = 110 ⚠️</div>
+                    <div class="bg-white p-2 rounded text-yellow-600 border border-yellow-200">Sa: 3 + 2 = 5</div>
+                </div>
+                <div class="text-center mt-4">
+                    <button id="m-btn-2" onclick="runMesin3()" class="btn-3d bg-blue-500 text-white font-bold py-2 px-6 rounded-lg">Cerakin 110 👇</button>
+                </div>
+            </div>
 
-        <div id="mesin-step2" class="hidden space-y-3">
-          <p class="text-lg">Sekarang, kita tambah nilai yang sama:</p>
-          <div class="text-xl p-3 bg-red-50 rounded-lg">
-            (Ratus) <span class="font-bold">300 + 100 = 400</span>
-          </div>
-          <div class="text-xl p-3 bg-blue-50 rounded-lg border-4 border-dashed border-blue-300" id="mesin-problem">
-            (Puluh) <span class="font-bold">50 + 60 = 110</span> 
-            <span class="text-base text-blue-600">(Hmm... mari kita cerakin 110)</span>
-          </div>
-          <div class="text-xl p-3 bg-yellow-50 rounded-lg">
-            (Sa) <span class="font-bold">3 + 2 = 5</span>
-          </div>
-          <button id="mesin-btn-2" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg" onclick="runMesinStep3()">
-            Cerakinkan 110
-          </button>
-        </div>
-        
-        <hr id="mesin-divider-2" class="my-6 border-gray-300 border-dashed hidden">
-        
-        <div id="mesin-step3" class="hidden">
-          <p class="text-lg">Bagus! 110 ialah 100 + 10. Jadi, jumlah kita ialah:</p>
-          <div class="text-2xl font-bold bg-green-100 p-4 rounded-lg text-center my-4">
-            (400 + 100) + (10) + (5)
-          </div>
-          <p class="text-3xl font-bold text-center">500 + 10 + 5 = <span class="text-green-600">515</span></p>
-          <p class="text-xl text-center mt-4">Sama dengan jawapan kita sebelum ini!</p>
+            <div id="m-step3" class="hidden bg-green-100 p-6 rounded-2xl border-4 border-green-300 text-center">
+                <p class="text-xl font-bold text-green-800 mb-2">Gabung Semua:</p>
+                <div class="text-2xl font-bold text-slate-700 mb-2">
+                    400 + (100 + 10) + 5
+                </div>
+                <div class="text-4xl font-black text-green-600">
+                    = 515
+                </div>
+            </div>
+
         </div>
       `;
     }
 
-    // === FUNGSI DIPERBAIKI (2) - LOGIK ANIMASI ===
-    function runMesinStep2() {
-      // Baris yang rosak telah DIBUANG.
-      
-      // Lumpuhkan butang step 1
-      document.getElementById('mesin-btn-1').disabled = true; 
-      
-      // Tunjuk Peringkat 2
-      document.getElementById('mesin-divider-1').classList.remove('hidden');
-      document.getElementById('mesin-step2').classList.remove('hidden');
-      setInfo("Sekarang, kita tambah nilai yang sama. 50 + 60 = 110.");
-      speak("Sekarang, kita tambah nilai yang sama. 50 tambah 60 ialah 110.");
-    }
-    
-    function runMesinStep3() {
-      document.getElementById('mesin-problem').innerHTML = `
-        (Puluh) <span class="font-bold">50 + 60 = <span class="bg-red-100 text-red-700 p-1 rounded">100</span> + <span class="bg-blue-100 text-blue-700 p-1 rounded">10</span></span>
-      `;
-      // Lumpuhkan butang step 2
-      document.getElementById('mesin-btn-2').disabled = true;
-      setInfo("Hebat! 110 dicerakin kepada 100 dan 10.");
-      speak("Hebat! 110 dicerakin kepada 100 dan 10.");
-      
-      setTimeout(() => {
-        // Tunjuk Peringkat 3
-        document.getElementById('mesin-divider-2').classList.remove('hidden');
-        document.getElementById('mesin-step3').classList.remove('hidden');
-        setInfo("Sekarang kita gabungkan semua: 400 + 100 + 10 + 5 = 515.");
-        speak("Sekarang kita gabungkan semua: 400 tambah 100 tambah 10 tambah 5 sama dengan 515.");
-      }, 2500);
+    window.runMesin2 = function() {
+        document.getElementById('m-btn-1').disabled = true;
+        document.getElementById('m-step2').classList.remove('hidden');
+        setInfo("Tambah ikut nilai tempat. 50 + 60 = 110.");
+        speak("Puluh tambah puluh. 50 tambah 60 ialah 110.");
     }
 
-
-    /* ====== Kawalan Umum ====== */
-    function clearActivity() {
-      currentActivity = 0;
-      document.getElementById('activity-content').innerHTML = `
-        <div class="text-center py-16">
-          <div class="text-6xl mb-4">🧮</div>
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">
-            Kemahiran Pemulihan: Operasi Tambah (Kumpul Semula)
-          </h2>
-          <p class="text-xl text-gray-600 mb-8">
-            Pilih aktiviti di bawah untuk meneroka cara mengumpul semula.
-          </p>
-          <div class="text-4xl">👇</div>
-        </div>
-      `;
-      setInfo("Pilih aktiviti untuk belajar tambah (kumpul semula)!");
-    }
-    function nextActivity() {
-      if (currentActivity === 0) return loadActivity(1);
-      if (currentActivity < 5) return loadActivity(currentActivity + 1);
-      return loadActivity(1);
+    window.runMesin3 = function() {
+        document.getElementById('m-step2').classList.remove('animate-pulse');
+        document.getElementById('m-btn-2').disabled = true;
+        document.getElementById('m-puluh-box').innerHTML = `Puluh: 50 + 60 = <span class="bg-red-100 px-1 rounded">100</span> + <span class="bg-blue-100 px-1 rounded">10</span>`;
+        
+        setTimeout(() => {
+            document.getElementById('m-step3').classList.remove('hidden');
+            document.getElementById('m-step3').classList.add('animate-bounce');
+            setTimeout(()=>document.getElementById('m-step3').classList.remove('animate-bounce'), 1000);
+            triggerWin();
+            setInfo("Jawapan akhir 515!");
+        }, 1500);
     }
 
-    // Kekalkan TTS resume pada sesetengah pelayar
-    if ('speechSynthesis' in window) {
-      setInterval(() => { if (window.speechSynthesis.paused) window.speechSynthesis.resume(); }, 1000);
-    }
+    // Keepalive TTS
+    if ('speechSynthesis' in window) setInterval(() => { if (window.speechSynthesis.paused) window.speechSynthesis.resume(); }, 1000);
+
   </script>
 </body>
 </html>
